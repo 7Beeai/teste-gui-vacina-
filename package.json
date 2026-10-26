@@ -1,0 +1,24 @@
+{
+  "name": "teste-gui-vacina",
+  "version": "1.0.0",
+  "description": "Projeto Vacina (7Bee): banco Supabase versionado por migracoes",
+  "scripts": {
+    "db:link": "supabase link --project-ref $SUPABASE_PROJECT_REF",
+    "db:push": "supabase db push",
+    "db:new": "supabase migration new"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/7Beeai/teste-gui-vacina-.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/7Beeai/teste-gui-vacina-/issues"
+  },
+  "homepage": "https://github.com/7Beeai/teste-gui-vacina-#readme",
+  "devDependencies": {
+    "supabase": "^2.122.0"
+  },
+  "private": true
+}
