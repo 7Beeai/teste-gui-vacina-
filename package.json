@@ -5,7 +5,8 @@
   "scripts": {
     "db:link": "supabase link --project-ref $SUPABASE_PROJECT_REF",
     "db:push": "supabase db push",
-    "db:new": "supabase migration new"
+    "db:new": "supabase migration new",
+    "db:sql": "./scripts/sql.sh"
   },
   "repository": {
     "type": "git",

@@ -47,6 +47,7 @@ A senha do banco não pode ser testada daqui (sem conexão direta ao Postgres, v
 
 - **Não há conexão direta ao Postgres.** O container não resolve DNS externo e só sai por HTTPS através do proxy. Por isso `supabase db push` e `supabase migration list` falham (`hostname resolving error`). Liberar mais domínios não resolve.
 - **Como aplicar migrações:** os arquivos SQL continuam versionados em `supabase/migrations/` e são aplicados pela API de gerenciamento: `POST https://api.supabase.com/v1/projects/{ref}/database/query`, que usa HTTPS e funciona. Registrar cada migração aplicada em `supabase_migrations.schema_migrations` para manter compatibilidade com a CLI.
+- **Script pronto:** `./scripts/sql.sh arquivo.sql` (ou `npm run db:sql -- arquivo.sql`) faz essa chamada sem expor o token. Teste de leitura: `./scripts/sql.sh supabase/checks/verificacao.sql`. A permissão fica em `.claude/settings.json` (`Bash(./scripts/sql.sh:*)`).
 - **O filtro de permissões da sessão** pode barrar o `curl` para a API de SQL. O Victor precisa aprovar quando aparecer, ou criar uma regra de permissão para esse comando.
 - Ao montar JSON com SQL em `curl`, usar um arquivo (`-d @arquivo.json`) com heredoc entre aspas simples, para não quebrar as aspas do SQL.
 
