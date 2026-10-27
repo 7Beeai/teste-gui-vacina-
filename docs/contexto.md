@@ -1,70 +1,93 @@
 # Projeto Vacina (7Bee): contexto para a nova sessão
 
-> Resumo da conversa de configuração inicial, feita entre 23 e 26/10/2026 numa sessão do CDT.
-> Este arquivo **não contém credenciais**. Elas ficam só nas variáveis do ambiente.
+> Resumo das sessões de configuração (23 a 27/10/2026).
+> Este arquivo **não contém credenciais**. Elas ficam só nas variáveis do ambiente do Claude Code.
 
-## 1. O que já existe
+## 1. Situação atual
 
 | Item | Situação |
 |---|---|
-| Organização no Supabase | **"Vacina 7bee teste Gui"**, plano **FREE** (id da org: `weaetxcsfvvpfgcakzch`) |
-| Projeto no Supabase | ref **`pmbkgswsjwctjxsghsch`**, URL `https://pmbkgswsjwctjxsghsch.supabase.co` |
-| Repositório GitHub | `7Beeai/teste-gui-vacina-` |
-| Ambiente do Claude Code | criado com as variáveis abaixo |
-| Banco de dados | **vazio**: nenhuma tabela criada ainda |
+| Repositório GitHub | `7Beeai/teste-gui-vacina-`, branch de trabalho `claude/keen-edison-le8mal` |
+| Projeto Supabase antigo | `pmbkgswsjwctjxsghsch` (us-east-1): **apagado** (API responde 404) |
+| Projeto Supabase novo | criado pelo Victor em **São Paulo (sa-east-1)**. *Ref ainda não confirmado pelo Claude* |
+| Banco de dados | **vazio**: nenhuma tabela e nenhuma migração aplicada |
+
+### O que já está no repositório
+- `package.json` com a CLI do Supabase (`supabase`, v2.122) como dependência de desenvolvimento e os atalhos:
+  - `npm run db:link`: `supabase link --project-ref $SUPABASE_PROJECT_REF`
+  - `npm run db:push`: `supabase db push` (**não funciona neste ambiente**, ver seção 3)
+  - `npm run db:new <nome>`: cria um arquivo de migração novo
+- `supabase/config.toml` (gerado por `supabase init`) e `supabase/migrations/` (vazia).
+- `.gitignore` ignorando `node_modules/` e `.env*`.
 
 ### Variáveis do ambiente (só os nomes)
-| Nome | Conteúdo |
-|---|---|
-| `SUPABASE_ACCESS_TOKEN` | token pessoal do Supabase (Account preferences → Access Tokens) |
-| `SUPABASE_DB_PASSWORD` | senha do banco do projeto |
-| `SUPABASE_PROJECT_REF` | `pmbkgswsjwctjxsghsch` |
+| Nome | O que é | Onde pegar |
+|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` | token **pessoal** da conta (`sbp_...`), **não** é a publishable nem a secret key | Avatar → Account preferences → **Access Tokens** (https://supabase.com/dashboard/account/tokens), na **mesma conta** do projeto novo |
+| `SUPABASE_PROJECT_REF` | ref do projeto **novo** | URL do painel: `supabase.com/dashboard/project/<ref>` |
+| `SUPABASE_DB_PASSWORD` | senha **nova** do banco do projeto novo | definida na criação do projeto |
 
-### Acesso de rede que o ambiente precisa liberar
-- `api.supabase.com`
-- `pmbkgswsjwctjxsghsch.supabase.co`
-- gerenciadores de pacotes (npm), para instalar a CLI do Supabase
+Publishable key e secret key **não** vão para o ambiente agora. A publishable só entra quando o app for construído. A secret nunca vai para o app nem para o navegador.
 
-## 2. Decisões e motivos
+### Rede do ambiente
+Liberado: `api.supabase.com`, `*.supabase.co` e os gerenciadores de pacotes (npm).
 
-- **Ambiente separado do CDT.** O ambiente do CDT tem uma trava de segurança que bloqueia chamadas diretas a APIs externas e acesso a credenciais. Por isso o projeto de vacina roda num ambiente e num repositório próprios.
-- **Acesso por código, não pelo conector do claude.ai** (orientação do Victor). O conector do Supabase no claude.ai está ligado a outra organização e não enxerga este projeto (o teste deu "sem permissão"). Ele também só tem ferramentas de logs e segredos ligadas.
-- **Banco criado por migrações versionadas no repositório** (`supabase/migrations`), não clicando no editor de tabelas. Assim fica auditável e repetível entre dev e prod.
+## 2. Primeira tarefa da nova sessão: verificar as variáveis (sem exibir valores)
+
+1. As três variáveis existem.
+2. `SUPABASE_PROJECT_REF` **não** é mais `pmbkgswsjwctjxsghsch`.
+3. `GET https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF` responde 200, com `region = sa-east-1` e status `ACTIVE_HEALTHY`.
+4. `GET /v1/projects` com o token enxerga o projeto novo. **Na última sessão o token antigo voltou lista vazia** (0 projetos, 0 organizações). Se continuar assim, o token é de outra conta ou ainda é o antigo: gerar um novo na conta do projeto de São Paulo.
+5. Rodar `npx supabase link --project-ref "$SUPABASE_PROJECT_REF"` e uma consulta simples de leitura pela API de SQL.
+6. Atualizar a seção 1 deste arquivo com o ref novo.
+
+A senha do banco não pode ser testada daqui (sem conexão direta ao Postgres, ver seção 3).
+
+## 3. Limitações técnicas do ambiente
+
+- **Não há conexão direta ao Postgres.** O container não resolve DNS externo e só sai por HTTPS através do proxy. Por isso `supabase db push` e `supabase migration list` falham (`hostname resolving error`). Liberar mais domínios não resolve.
+- **Como aplicar migrações:** os arquivos SQL continuam versionados em `supabase/migrations/` e são aplicados pela API de gerenciamento: `POST https://api.supabase.com/v1/projects/{ref}/database/query`, que usa HTTPS e funciona. Registrar cada migração aplicada em `supabase_migrations.schema_migrations` para manter compatibilidade com a CLI.
+- **O filtro de permissões da sessão** pode barrar o `curl` para a API de SQL. O Victor precisa aprovar quando aparecer, ou criar uma regra de permissão para esse comando.
+- Ao montar JSON com SQL em `curl`, usar um arquivo (`-d @arquivo.json`) com heredoc entre aspas simples, para não quebrar as aspas do SQL.
+
+## 4. Decisões e motivos
+
+- **Ambiente separado do CDT.** O ambiente do CDT bloqueia chamadas diretas a APIs externas e acesso a credenciais.
+- **Acesso por código, não pelo conector do claude.ai** (orientação do Victor). O conector do Supabase no claude.ai está ligado a outra organização e não enxerga este projeto.
+- **Banco criado por migrações versionadas no repositório**, não pelo editor de tabelas. Auditável e repetível entre dev e prod.
 - **Dado de vacinação é dado pessoal sensível de saúde (LGPD).** RLS em toda tabela desde o primeiro dia, trilha de auditoria e o mínimo de dado pessoal.
-- **Região:** São Paulo (sa-east-1), recomendada pra LGPD e latência. *Confirmar a região em que o projeto foi criado.*
-- **Supabase Assistant (Data privacy da organização):** manter **Disabled**, pra não compartilhar estrutura nem dados com IAs de terceiros.
+- **Região São Paulo (sa-east-1).** O primeiro projeto tinha sido criado por engano em us-east-1. Como o banco estava vazio, foi recriado em São Paulo.
+- **Supabase Assistant (Data privacy da organização):** manter **Disabled**.
 
-## 3. Pendências
+## 5. Pendências
 
-### Segurança (atenção)
-- [ ] **Confirmar que o token e a senha do banco foram trocados.** Os primeiros foram colados no chat da sessão anterior e devem ser tratados como vazados. O token antigo precisa ser **revogado** no Supabase e a senha **resetada** (Project Settings → Database → Reset database password). As variáveis do ambiente devem ter os valores **novos**.
+### Segurança
+- [ ] Confirmar que o token antigo foi **revogado** e que as variáveis têm os valores **novos** (token, ref e senha do projeto novo).
 - [ ] Se a senha antiga (padrão pessoal) for usada em outros serviços, trocar lá também.
 - [ ] Nunca colar token, chave ou senha no chat. Sempre nas configurações do ambiente.
 
 ### Configuração do Supabase
-- [ ] **Plano:** está no Free. Serve pra teste sem dado real. **Antes de entrar dado real de paciente, passar pro Pro**: backup diário, projeto não pausa por inatividade e permite exigir MFA. Fica no ícone **$ (Billing)** da barra lateral da organização.
-- [ ] **MFA:** ativar na própria conta (avatar → Account preferences → Security). Depois, já no Pro, exigir de todos em Organization Settings → **Security**.
-- [ ] **DPA (contrato de tratamento de dados):** Organization Settings → **Legal Documents**.
-- [ ] **Login dos usuários:** no projeto, Authentication → **Sign In / Providers**. Deixar ligado só o provedor usado. Se só a equipe cria contas, desligar "Allow new users to sign up".
-- [ ] **Chaves:** a URL e a chave pública ficam no botão **Connect**, no topo do projeto. A chave secreta (`service_role`/secret) fica em Project Settings → **API Keys**. A secreta nunca vai pro app nem pro navegador.
-- [ ] PITR (restaurar o banco num momento exato): avaliar quando for pra produção (add-on pago).
+- [ ] **Plano:** Free serve só pra teste sem dado real. Antes de dado real de paciente, passar pro **Pro** (backup diário, não pausa, permite exigir MFA).
+- [ ] **MFA** na própria conta (Account preferences → Security). No Pro, exigir de todos em Organization Settings → Security.
+- [ ] **DPA:** Organization Settings → Legal Documents.
+- [ ] **Login dos usuários:** Authentication → Sign In / Providers. Só o provedor usado. Se só a equipe cria contas, desligar "Allow new users to sign up".
+- [ ] **PITR:** avaliar ao ir pra produção (add-on pago).
 
-## 4. Perguntas ainda sem resposta (definem o desenho do banco)
+## 6. Perguntas ainda sem resposta (definem o desenho do banco)
 
-1. **O que é o produto?** Agendamento, registro de doses aplicadas, carteira de vacinação do paciente, controle de estoque ou lotes, campanha?
+1. **O que é o produto?** Agendamento, registro de doses aplicadas, carteira de vacinação do paciente, estoque e lotes, campanha?
 2. **Quem usa?** Só a equipe da clínica, pacientes também, várias clínicas?
-3. **App web, celular ou os dois?** Já há tecnologia escolhida? (A tela "Connect" sugere Next.js por padrão, mas nada foi decidido.)
+3. **App web, celular ou os dois?** Já há tecnologia escolhida?
 4. **Integrações externas?** SI-PNI/RNDS do Ministério da Saúde, WhatsApp, pagamento?
 
-## 5. Próximos passos na nova sessão
+## 7. Próximos passos
 
-1. Conferir que as variáveis de ambiente existem (sem exibir os valores) e testar a conexão com o projeto.
-2. No repositório: `npx supabase init` e `npx supabase link --project-ref "$SUPABASE_PROJECT_REF"` (a CLI lê `SUPABASE_ACCESS_TOKEN` e `SUPABASE_DB_PASSWORD` do ambiente).
-3. Responder as 4 perguntas da seção 4.
-4. Criar o primeiro rascunho do banco como migração: tabelas, RLS e auditoria. Aplicar com `npx supabase db push`.
-5. Só depois disso, decidir e construir o app (as telas).
+1. Verificar as variáveis e a conexão (seção 2).
+2. Responder as 4 perguntas da seção 6.
+3. Escrever a primeira migração (tabelas, RLS e auditoria) em `supabase/migrations/` e aplicar pela API (seção 3).
+4. Só depois decidir e construir o app (as telas).
 
-## 6. Explicação simples: o que o Supabase faz
+## 8. Explicação simples: o que o Supabase faz
 
 O Supabase é a "cozinha" do sistema; o app é o "salão". Ele entrega pronto:
 - **Banco de dados**: pacientes, doses, lotes, agendamentos.
