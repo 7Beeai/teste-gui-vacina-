@@ -9,7 +9,7 @@
 |---|---|
 | Repositório GitHub | `7Beeai/teste-gui-vacina-`, branch de trabalho `claude/keen-edison-le8mal` |
 | Projeto Supabase antigo | `pmbkgswsjwctjxsghsch` (us-east-1): **apagado** (API responde 404) |
-| Projeto Supabase novo | criado pelo Victor em **São Paulo (sa-east-1)**. *Ref ainda não confirmado pelo Claude* |
+| Projeto Supabase novo | `qkbqgxonyaaytizwwbpk`, **São Paulo (sa-east-1)**, `ACTIVE_HEALTHY`, Postgres 17. Confirmado em 27/10/2026 (token enxerga o projeto, `supabase link` ok) |
 | Banco de dados | **vazio**: nenhuma tabela e nenhuma migração aplicada |
 
 ### O que já está no repositório
