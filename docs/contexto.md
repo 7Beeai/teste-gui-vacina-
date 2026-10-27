@@ -81,6 +81,12 @@ A senha do banco não pode ser testada daqui (sem conexão direta ao Postgres, v
 3. **App web, celular ou os dois?** Já há tecnologia escolhida?
 4. **Integrações externas?** SI-PNI/RNDS do Ministério da Saúde, WhatsApp, pagamento?
 
+**Respostas (27/10/2026):**
+1. Recriar o produto de vacinas que o Victor já tem. *Falta identificar qual é e onde está a referência.*
+2. Só a equipe da clínica.
+3. Web e celular.
+4. WhatsApp e pagamento.
+
 ## 7. Próximos passos
 
 1. Verificar as variáveis e a conexão (seção 2).
