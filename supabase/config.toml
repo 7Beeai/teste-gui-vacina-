@@ -414,3 +414,12 @@ enabled = true
 # formatted with uppercase keywords, indent 2, max width 180, trailing commas,
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
+
+# Edge functions do fluxo da Vivi de teste. verify_jwt = false porque a proteção é o token
+# próprio no header x-api-key (secret AI_AGENT_TOKEN), checado no código.
+# Toda função nova precisa de entrada aqui: sem ela o deploy vira verify_jwt = true.
+[functions.ai-agent]
+verify_jwt = false
+
+[functions.embed-faq]
+verify_jwt = false

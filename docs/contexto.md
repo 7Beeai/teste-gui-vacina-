@@ -94,6 +94,8 @@ O Guilherme (CS da 7Bee) está aprendendo Supabase montando uma versão de teste
 - **IA:** Google Gemini, plano gratuito. A chave está no secret `GEMINI_API_KEY` do Supabase.
 - **Canal:** primeiro uma página de chat de teste; depois Telegram ou o número de teste da API oficial do WhatsApp (Meta).
 - **Tabelas:** mesmos nomes da Vaccine (`vacinas_catalogo`, `agents`, `ai_chat_history`, `processing_locks`, `documents` etc.). `repasses_atendente` substitui a transferência no Digisac.
+- **Edge functions:** `ai-agent` (a Vivi) e `embed-faq` (gera os embeddings da FAQ). Publicar com `npx supabase functions deploy <nome> --project-ref "$SUPABASE_PROJECT_REF" --use-api`. Elas são protegidas pelo header `x-api-key`, que precisa bater com o secret `AI_AGENT_TOKEN`.
+- **Prompt:** linha `name = 'vivi_exemplo'` da tabela `agents`. Para mudar, rode um `update` com `./scripts/sql.sh`; a próxima mensagem já usa o texto novo.
 - **Aplicar migração:** juntar o arquivo com `begin;`/`commit;` e o insert em `supabase_migrations.schema_migrations`, e rodar com `./scripts/sql.sh`.
 
 ## 7. Próximos passos
