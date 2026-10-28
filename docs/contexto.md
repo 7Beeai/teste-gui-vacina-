@@ -10,7 +10,7 @@
 | Repositório GitHub | `7Beeai/teste-gui-vacina-`, branch de trabalho `claude/keen-edison-le8mal` |
 | Projeto Supabase antigo | `pmbkgswsjwctjxsghsch` (us-east-1): **apagado** (API responde 404) |
 | Projeto Supabase novo | `qkbqgxonyaaytizwwbpk`, **São Paulo (sa-east-1)**, `ACTIVE_HEALTHY`, Postgres 17. Confirmado em 27/10/2026 (token enxerga o projeto, `supabase link` ok) |
-| Banco de dados | **vazio**: nenhuma tabela e nenhuma migração aplicada |
+| Banco de dados | 17 tabelas espelhando a Vaccine, com dados fictícios da "Clínica Exemplo" (migrações `20261028120000` e `20261028120100`, aplicadas pela API) |
 
 ### O que já está no repositório
 - `package.json` com a CLI do Supabase (`supabase`, v2.122) como dependência de desenvolvimento e os atalhos:
@@ -86,6 +86,15 @@ A senha do banco não pode ser testada daqui (sem conexão direta ao Postgres, v
 2. Só a equipe da clínica.
 3. Web e celular.
 4. WhatsApp e pagamento.
+
+## 6.1 Objetivo real (28/10/2026)
+
+O Guilherme (CS da 7Bee) está aprendendo Supabase montando uma versão de teste do fluxo da Vivi (Vaccine), **sem custo** e **só com dados fictícios** (o repositório é público).
+
+- **IA:** Google Gemini, plano gratuito. A chave está no secret `GEMINI_API_KEY` do Supabase.
+- **Canal:** primeiro uma página de chat de teste; depois Telegram ou o número de teste da API oficial do WhatsApp (Meta).
+- **Tabelas:** mesmos nomes da Vaccine (`vacinas_catalogo`, `agents`, `ai_chat_history`, `processing_locks`, `documents` etc.). `repasses_atendente` substitui a transferência no Digisac.
+- **Aplicar migração:** juntar o arquivo com `begin;`/`commit;` e o insert em `supabase_migrations.schema_migrations`, e rodar com `./scripts/sql.sh`.
 
 ## 7. Próximos passos
 
