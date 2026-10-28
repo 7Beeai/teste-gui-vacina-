@@ -9,7 +9,7 @@
 //   6. devolve { reply, toolsUsed, usage }
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4'
-import { embed, generateContent, GEMINI_MODEL } from '../_shared/gemini.ts'
+import { embed, generateContent, GEMINI_FALLBACK_MODELS, GEMINI_MODEL } from '../_shared/gemini.ts'
 import { corsHeaders, json, unauthorized } from '../_shared/http.ts'
 
 const AGENT_NAME = Deno.env.get('AGENT_NAME') ?? 'vivi_exemplo'
@@ -18,6 +18,9 @@ const HISTORY_LIMIT = 30
 const HISTORY_MAX_AGE_DAYS = 7 // a Vaccine não corta por data e já usou resposta antiga
 const MAX_TOOL_ROUNDS = 6
 const LOCK_TTL_MS = 60_000
+// A função é encerrada em 150s. Depois de 100s não começa outra chamada à IA:
+// responde com a mensagem de reserva e libera o lock.
+const DEADLINE_MS = 100_000
 const FALLBACK_REPLY =
   'Desculpe, tive um problema para responder agora. Já avisei a nossa equipe, que vai continuar o seu atendimento 💜'
 
@@ -331,6 +334,7 @@ Deno.serve(async (req) => {
 
   const toolsUsed: string[] = []
   let tokens = 0
+  let modelUsed = ''
   try {
     await supabase.from('whatsapp_users').upsert({
       contact_id: contactId,
@@ -348,13 +352,25 @@ Deno.serve(async (req) => {
     }
 
     let reply = ''
+    // Depois que um modelo responde, a conversa fica nele: o turno devolvido carrega
+    // assinaturas internas que só o mesmo modelo aceita.
+    let models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const data = await generateContent({
-        systemInstruction,
-        contents,
-        tools: [{ functionDeclarations: TOOLS }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
-      })
+      if (Date.now() - inicio > DEADLINE_MS) {
+        console.warn(`[ai-agent] prazo de ${DEADLINE_MS / 1000}s atingido na rodada ${round}`)
+        break
+      }
+      const { data, model } = await generateContent(
+        {
+          systemInstruction,
+          contents,
+          tools: [{ functionDeclarations: TOOLS }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+        },
+        models,
+      )
+      models = [model]
+      modelUsed = model
       tokens += data.usageMetadata?.totalTokenCount ?? 0
 
       const content = data.candidates?.[0]?.content
@@ -402,7 +418,7 @@ Deno.serve(async (req) => {
       tokens_used: tokens,
     })
 
-    return json({ reply, toolsUsed, usage: { model: GEMINI_MODEL, tokens } })
+    return json({ reply, toolsUsed, usage: { model: modelUsed, tokens } })
   } catch (e) {
     console.error('[ai-agent] erro:', e)
     await supabase.from('message_log').insert({
