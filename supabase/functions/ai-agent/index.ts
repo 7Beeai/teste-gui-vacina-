@@ -9,7 +9,7 @@
 //   6. devolve { reply, toolsUsed, usage }
 
 import { createClient } from 'npm:@supabase/supabase-js@2.45.4'
-import { embed, generateContent, GEMINI_FALLBACK_MODELS, GEMINI_MODEL } from '../_shared/gemini.ts'
+import { embed, GeminiError, generateContent, GEMINI_FALLBACK_MODELS, GEMINI_MODEL } from '../_shared/gemini.ts'
 import { corsHeaders, json, unauthorized } from '../_shared/http.ts'
 
 const AGENT_NAME = Deno.env.get('AGENT_NAME') ?? 'vivi_exemplo'
@@ -346,29 +346,51 @@ Deno.serve(async (req) => {
     const userText = [...pendentes, message].join('\n')
 
     const [prompt, history] = await Promise.all([loadPrompt(), loadHistory(contactId)])
-    const contents: any[] = [...history, { role: 'user', parts: [{ text: userText }] }]
+    const baseContents: any[] = [...history, { role: 'user', parts: [{ text: userText }] }]
+    let contents: any[] = [...baseContents]
     const systemInstruction = {
       parts: [{ text: `${prompt}\n\n${body.userName ? `Nome do contato no WhatsApp: ${body.userName}\n` : ''}${dataAtual()}` }],
     }
+    const request = () => ({
+      systemInstruction,
+      contents,
+      tools: [{ functionDeclarations: TOOLS }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
+    })
+    // Resultados das tools desta mensagem, para recomeçar em outro modelo se preciso.
+    const toolLog: { tool: string; args: unknown; result: unknown }[] = []
 
     let reply = ''
+    const allModels = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
     // Depois que um modelo responde, a conversa fica nele: o turno devolvido carrega
     // assinaturas internas que só o mesmo modelo aceita.
-    let models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
+    let models = allModels
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       if (Date.now() - inicio > DEADLINE_MS) {
         console.warn(`[ai-agent] prazo de ${DEADLINE_MS / 1000}s atingido na rodada ${round}`)
         break
       }
-      const { data, model } = await generateContent(
-        {
-          systemInstruction,
-          contents,
-          tools: [{ functionDeclarations: TOOLS }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
-        },
-        models,
-      )
+      let result: { data: any; model: string }
+      try {
+        result = await generateContent(request(), models)
+      } catch (e) {
+        // O modelo travou no meio da resposta. Recomeça em um modelo reserva, passando os
+        // resultados das tools já consultadas como texto (sem as assinaturas do modelo anterior).
+        const reservas = allModels.filter((m) => !models.includes(m))
+        if (!(e instanceof GeminiError && e.temporary) || !toolLog.length || !reservas.length) throw e
+        console.warn(`[ai-agent] ${models[0]} travou na rodada ${round}; recomeçando em ${reservas.join(', ')}`)
+        contents = [
+          ...baseContents,
+          {
+            role: 'user',
+            parts: [{
+              text: `[Sistema] Consultas já feitas para esta mensagem (use estes resultados; não repita as mesmas consultas):\n${JSON.stringify(toolLog)}`,
+            }],
+          },
+        ]
+        result = await generateContent(request(), reservas)
+      }
+      const { data, model } = result
       models = [model]
       modelUsed = model
       tokens += data.usageMetadata?.totalTokenCount ?? 0
@@ -394,6 +416,7 @@ Deno.serve(async (req) => {
           console.error(`[tool] ${functionCall.name} falhou:`, e)
           result = { erro: 'Falha ao consultar. Não invente a informação; repasse para a equipe se necessário.' }
         }
+        toolLog.push({ tool: functionCall.name, args: functionCall.args ?? {}, result })
         responses.push({ functionResponse: { name: functionCall.name, response: { result } } })
       }
       contents.push({ role: 'user', parts: responses })

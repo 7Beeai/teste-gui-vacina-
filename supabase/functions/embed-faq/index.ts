@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
         await generateContent({ contents: [{ role: 'user', parts: [{ text: 'Responda apenas: ok' }] }] }, [model])
         resultados.push({ model, ok: true, ms: Date.now() - inicio })
       } catch (e) {
-        resultados.push({ model, ok: false, ms: Date.now() - inicio, erro: String(e).slice(0, 120) })
+        resultados.push({ model, ok: false, ms: Date.now() - inicio, erro: String(e).slice(0, 900) })
       }
     }
     return json({ resultados })
